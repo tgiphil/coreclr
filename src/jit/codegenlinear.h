@@ -8,8 +8,6 @@
 // definition of the CodeGen class.
 //
 
-#ifndef LEGACY_BACKEND // Not necessary (it's this way in the #include location), but helpful to IntelliSense
-
 void genSetRegToConst(regNumber targetReg, var_types targetType, GenTree* tree);
 void genCodeForTreeNode(GenTree* treeNode);
 void genCodeForBinary(GenTree* treeNode);
@@ -119,6 +117,8 @@ void genHWIntrinsic(GenTreeHWIntrinsic* node);
 #if defined(_TARGET_XARCH_)
 void genHWIntrinsic_R_R_RM(GenTreeHWIntrinsic* node, instruction ins);
 void genHWIntrinsic_R_R_RM_I(GenTreeHWIntrinsic* node, instruction ins);
+void genHWIntrinsic_R_R_R_RM(
+    instruction ins, emitAttr attr, regNumber targetReg, regNumber op1Reg, regNumber op2Reg, GenTree* op3);
 void genSSEIntrinsic(GenTreeHWIntrinsic* node);
 void genSSE2Intrinsic(GenTreeHWIntrinsic* node);
 void genSSE41Intrinsic(GenTreeHWIntrinsic* node);
@@ -370,5 +370,3 @@ inline void genCheckConsumeNode(GenTree* treeNode)
 {
 }
 #endif // DEBUG
-
-#endif // !LEGACY_BACKEND

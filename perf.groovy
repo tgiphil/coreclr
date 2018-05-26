@@ -106,7 +106,12 @@ def static getOSGroup(def os) {
                             Utilities.setMachineAffinity(newJob, "Windows_NT", '20170427-elevated')
                         }
                         def archiveSettings = new ArchivalSettings()
-                        archiveSettings.addFiles('bin/sandbox_logs/**')
+                        archiveSettings.addFiles('bin/sandbox_logs/**/*_log.txt')
+                        archiveSettings.addFiles('bin/sandbox_logs/**/*.csv')
+                        archiveSettings.addFiles('bin/sandbox_logs/**/*.xml')
+                        archiveSettings.addFiles('bin/sandbox_logs/**/*.log')
+                        archiveSettings.addFiles('bin/sandbox_logs/**/*.md')
+                        archiveSettings.addFiles('bin/sandbox_logs/**/*.etl')
                         archiveSettings.addFiles('machinedata.json')
                         archiveSettings.setAlwaysArchive()
 
@@ -115,9 +120,9 @@ def static getOSGroup(def os) {
 
                         newJob.with {
                             logRotator {
-                                artifactDaysToKeep(30)
+                                artifactDaysToKeep(14)
                                 daysToKeep(30)
-                                artifactNumToKeep(200)
+                                artifactNumToKeep(100)
                                 numToKeep(200)
                             }
                             wrappers {
@@ -344,7 +349,12 @@ def static getFullPerfJobName(def project, def os, def isPR) {
         }
 
         def archiveSettings = new ArchivalSettings()
-        archiveSettings.addFiles('bin/sandbox_logs/**')
+        archiveSettings.addFiles('bin/sandbox_logs/**/*_log.txt')
+        archiveSettings.addFiles('bin/sandbox_logs/**/*.csv')
+        archiveSettings.addFiles('bin/sandbox_logs/**/*.xml')
+        archiveSettings.addFiles('bin/sandbox_logs/**/*.log')
+        archiveSettings.addFiles('bin/sandbox_logs/**/*.md')
+        archiveSettings.addFiles('bin/sandbox_logs/**/*.etl')
         archiveSettings.addFiles('machinedata.json')
         archiveSettings.setAlwaysArchive()
 
@@ -355,9 +365,9 @@ def static getFullPerfJobName(def project, def os, def isPR) {
         newJob.with {
             // Enable the log rotator
             logRotator {
-                artifactDaysToKeep(30)
+                artifactDaysToKeep(14)
                 daysToKeep(30)
-                artifactNumToKeep(200)
+                artifactNumToKeep(100)
                 numToKeep(200)
             }
             wrappers {
@@ -617,7 +627,12 @@ parallel(
                     }
 
                     def archiveSettings = new ArchivalSettings()
-                    archiveSettings.addFiles('bin/sandbox_logs/**')
+                    archiveSettings.addFiles('bin/sandbox_logs/**/*_log.txt')
+                    archiveSettings.addFiles('bin/sandbox_logs/**/*.csv')
+                    archiveSettings.addFiles('bin/sandbox_logs/**/*.xml')
+                    archiveSettings.addFiles('bin/sandbox_logs/**/*.log')
+                    archiveSettings.addFiles('bin/sandbox_logs/**/*.md')
+                    archiveSettings.addFiles('bin/sandbox_logs/**/*.etl')
                     archiveSettings.addFiles('machinedata.json')
                     archiveSettings.setAlwaysArchive()
 
@@ -626,9 +641,9 @@ parallel(
 
                     newJob.with {
                         logRotator {
-                            artifactDaysToKeep(30)
+                            artifactDaysToKeep(14)
                             daysToKeep(30)
-                            artifactNumToKeep(200)
+                            artifactNumToKeep(100)
                             numToKeep(200)
                         }
                         wrappers {
@@ -739,9 +754,9 @@ parallel(
 
         newJob.with {
             logRotator {
-                artifactDaysToKeep(30)
+                artifactDaysToKeep(14)
                 daysToKeep(30)
-                artifactNumToKeep(200)
+                artifactNumToKeep(100)
                 numToKeep(200)
             }
             wrappers {
@@ -812,7 +827,12 @@ parallel(
                     }
 
                     def archiveSettings = new ArchivalSettings()
-                    archiveSettings.addFiles('bin/sandbox_logs/**')
+                    archiveSettings.addFiles('bin/sandbox_logs/**/*_log.txt')
+                    archiveSettings.addFiles('bin/sandbox_logs/**/*.csv')
+                    archiveSettings.addFiles('bin/sandbox_logs/**/*.xml')
+                    archiveSettings.addFiles('bin/sandbox_logs/**/*.log')
+                    archiveSettings.addFiles('bin/sandbox_logs/**/*.md')
+                    archiveSettings.addFiles('bin/sandbox_logs/**/*.etl')
                     archiveSettings.addFiles('machinedata.json')
                     archiveSettings.setAlwaysArchive()
 
@@ -823,9 +843,9 @@ parallel(
 
                     newJob.with {
                         logRotator {
-                            artifactDaysToKeep(30)
+                            artifactDaysToKeep(14)
                             daysToKeep(30)
-                            artifactNumToKeep(200)
+                            artifactNumToKeep(100)
                             numToKeep(200)
                         }
                         wrappers {

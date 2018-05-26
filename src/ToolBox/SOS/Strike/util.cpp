@@ -4824,7 +4824,7 @@ HRESULT InitCorDebugInterface()
     if(g_pCorDebugProcess != NULL)
     {
         // ICorDebugProcess4 is currently considered a private experimental interface on ICorDebug, it might go away so
-        // we need to be sure to handle its absense gracefully
+        // we need to be sure to handle its absence gracefully
         ToRelease<ICorDebugProcess4> pProcess4 = NULL;
         if(SUCCEEDED(g_pCorDebugProcess->QueryInterface(__uuidof(ICorDebugProcess4), (void**)&pProcess4)))
         {
@@ -6121,12 +6121,12 @@ HRESULT SymbolReader::LoadSymbolsForWindowsPDB(___in IMetaDataImport* pMD, ___in
     ToRelease<ISymUnmanagedBinder3> pSymBinder;
     if (FAILED(Status = CreateInstanceCustom(CLSID_CorSymBinder_SxS, 
                         IID_ISymUnmanagedBinder3, 
-                        W("diasymreader.dll"),
+                        NATIVE_SYMBOL_READER_DLL,
                         cciLatestFx|cciDacColocated|cciDbgPath, 
                         (void**)&pSymBinder)))
     {
         ExtOut("SOS Error: Unable to CoCreateInstance class=CLSID_CorSymBinder_SxS, interface=IID_ISymUnmanagedBinder3, hr=0x%x\n", Status);
-        ExtOut("This usually means the installation of .Net Framework on your machine is missing or needs repair\n");
+        ExtOut("This usually means SOS was unable to locate a suitable version of DiaSymReader. The dll searched for was '%S'\n", NATIVE_SYMBOL_READER_DLL);
         return Status;
     }
 

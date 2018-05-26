@@ -21,8 +21,6 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #pragma hdrstop
 #endif
 
-#ifndef LEGACY_BACKEND // This file is ONLY used for the RyuJIT backend that uses the linear scan register allocator
-
 #include "lower.h"
 
 #if !defined(_TARGET_64BIT_)
@@ -144,7 +142,7 @@ GenTree* Lowering::LowerNode(GenTree* node)
 
         case GT_MUL:
         case GT_MULHI:
-#if defined(_TARGET_X86_) && !defined(LEGACY_BACKEND)
+#if defined(_TARGET_X86_)
         case GT_MUL_LONG:
 #endif
             ContainCheckMul(node->AsOp());
@@ -562,7 +560,6 @@ GenTree* Lowering::LowerSwitch(GenTree* node)
     // I think this is due to the fact that we use absolute addressing
     // instead of relative. But in CoreRT is used as a rule relative
     // addressing when we generate an executable.
-    // This bug is also present in Legacy JIT.
     // See also https://github.com/dotnet/coreclr/issues/13194
     // Also https://github.com/dotnet/coreclr/pull/13197
     useJumpSequence = useJumpSequence || comp->IsTargetAbi(CORINFO_CORERT_ABI);
@@ -978,12 +975,12 @@ void Lowering::ReplaceArgWithPutArgOrBitcast(GenTree** argSlot, GenTree* putArgO
 //    call, arg, and info must be non-null.
 //
 // Notes:
-//    For System V systems with native struct passing (i.e. FEATURE_UNIX_AMD64_STRUCT_PASSING defined)
+//    For System V systems with native struct passing (i.e. UNIX_AMD64_ABI defined)
 //    this method allocates a single GT_PUTARG_REG for 1 eightbyte structs and a GT_FIELD_LIST of two GT_PUTARG_REGs
 //    for two eightbyte structs.
 //
 //    For STK passed structs the method generates GT_PUTARG_STK tree. For System V systems with native struct passing
-//    (i.e. FEATURE_UNIX_AMD64_STRUCT_PASSING defined) this method also sets the GC pointers count and the pointers
+//    (i.e. UNIX_AMD64_ABI defined) this method also sets the GC pointers count and the pointers
 //    layout object, so the codegen of the GT_PUTARG_STK could use this for optimizing copying to the stack by value.
 //    (using block copy primitives for non GC pointers and a single TARGET_POINTER_SIZE copy with recording GC info.)
 //
@@ -997,7 +994,7 @@ GenTree* Lowering::NewPutArg(GenTreeCall* call, GenTree* arg, fgArgTabEntry* inf
     bool     updateArgTable = true;
 
     bool isOnStack = true;
-#ifdef FEATURE_UNIX_AMD64_STRUCT_PASSING
+#ifdef UNIX_AMD64_ABI
     if (varTypeIsStruct(type))
     {
         isOnStack = !info->structDesc.passedInRegisters;
@@ -1006,9 +1003,9 @@ GenTree* Lowering::NewPutArg(GenTreeCall* call, GenTree* arg, fgArgTabEntry* inf
     {
         isOnStack = info->regNum == REG_STK;
     }
-#else  // !FEATURE_UNIX_AMD64_STRUCT_PASSING
+#else  // !UNIX_AMD64_ABI
     isOnStack = info->regNum == REG_STK;
-#endif // !FEATURE_UNIX_AMD64_STRUCT_PASSING
+#endif // !UNIX_AMD64_ABI
 
 #ifdef _TARGET_ARMARCH_
     // Mark contained when we pass struct
@@ -1088,7 +1085,7 @@ GenTree* Lowering::NewPutArg(GenTreeCall* call, GenTree* arg, fgArgTabEntry* inf
     {
         if (!isOnStack)
         {
-#if defined(FEATURE_UNIX_AMD64_STRUCT_PASSING)
+#if defined(UNIX_AMD64_ABI)
             if (info->isStruct)
             {
                 // The following code makes sure a register passed struct arg is moved to
@@ -1203,7 +1200,7 @@ GenTree* Lowering::NewPutArg(GenTreeCall* call, GenTree* arg, fgArgTabEntry* inf
                 }
             }
             else
-#else // not defined(FEATURE_UNIX_AMD64_STRUCT_PASSING)
+#else // not defined(UNIX_AMD64_ABI)
 #if FEATURE_MULTIREG_ARGS
             if ((info->numRegs > 1) && (arg->OperGet() == GT_FIELD_LIST))
             {
@@ -1245,7 +1242,7 @@ GenTree* Lowering::NewPutArg(GenTreeCall* call, GenTree* arg, fgArgTabEntry* inf
             }
             else
 #endif // FEATURE_MULTIREG_ARGS
-#endif // not defined(FEATURE_UNIX_AMD64_STRUCT_PASSING)
+#endif // not defined(UNIX_AMD64_ABI)
             {
                 putArg = comp->gtNewPutArgReg(type, arg, info->regNum);
             }
@@ -2296,11 +2293,10 @@ GenTree* Lowering::LowerTailCallViaHelper(GenTreeCall* call, GenTree* callTarget
     // The callTarget tree needs to be sequenced.
     LIR::Range callTargetRange = LIR::SeqTree(comp, callTarget);
 
-    fgArgTabEntry* argEntry;
-
 #if defined(_TARGET_AMD64_) || defined(_TARGET_ARM_)
 
-// For ARM32 and AMD64, first argument is CopyRoutine and second argument is a place holder node.
+    // For ARM32 and AMD64, first argument is CopyRoutine and second argument is a place holder node.
+    fgArgTabEntry* argEntry;
 
 #ifdef DEBUG
     argEntry = comp->gtArgEntryByArgNum(call, 0);
@@ -2338,6 +2334,8 @@ GenTree* Lowering::LowerTailCallViaHelper(GenTreeCall* call, GenTree* callTarget
     nNewStkArgsWords -= 4;
 
     unsigned numArgs = call->fgArgInfo->ArgCount();
+
+    fgArgTabEntry* argEntry;
 
     // arg 0 == callTarget.
     argEntry = comp->gtArgEntryByArgNum(call, numArgs - 1);
@@ -3265,6 +3263,7 @@ GenTree* Lowering::LowerDelegateInvoke(GenTreeCall* call)
     BlockRange().InsertAfter(thisExpr, newThisAddr, newThis);
 
     thisArgNode->gtOp.gtOp1 = newThis;
+    ContainCheckIndir(newThis->AsIndir());
 
     // the control target is
     // [originalThis + firstTgtOffs]
@@ -4191,7 +4190,7 @@ GenTree* Lowering::LowerVirtualStubCall(GenTreeCall* call)
         noway_assert(call->IsVirtualStubRelativeIndir());
 
         // Direct stub calls, though the stubAddr itself may still need to be
-        // accesed via an indirection.
+        // accessed via an indirection.
         GenTree* addr = AddrGen(stubAddr);
 
 #ifdef _TARGET_X86_
@@ -5984,5 +5983,3 @@ void Lowering::ContainCheckJTrue(GenTreeOp* node)
     cmp->gtType  = TYP_VOID;
     cmp->gtFlags |= GTF_SET_FLAGS;
 }
-
-#endif // !LEGACY_BACKEND

@@ -221,9 +221,6 @@ unsigned Compiler::simdSizeOfHWIntrinsic(NamedIntrinsic intrinsic, CORINFO_SIG_I
     return simdSize;
 }
 
-// TODO_XARCH-CQ - refactoring of numArgsOfHWIntrinsic fast path into inlinable
-// function and slow local static function may increase performance significantly
-
 //------------------------------------------------------------------------
 // numArgsOfHWIntrinsic: gets the number of arguments for the hardware intrinsic.
 // This attempts to do a table based lookup but will fallback to the number
@@ -255,36 +252,33 @@ int Compiler::numArgsOfHWIntrinsic(GenTreeHWIntrinsic* node)
     GenTree* op1 = node->gtGetOp1();
     GenTree* op2 = node->gtGetOp2();
 
-    if (op2 != nullptr)
-    {
-        return 2;
-    }
-
-    if (op1 != nullptr)
-    {
-        if (op1->OperIsList())
-        {
-            numArgs              = 0;
-            GenTreeArgList* list = op1->AsArgList();
-
-            while (list != nullptr)
-            {
-                numArgs++;
-                list = list->Rest();
-            }
-
-            assert(numArgs > 0);
-            return numArgs;
-        }
-        else
-        {
-            return 1;
-        }
-    }
-    else
+    if (op1 == nullptr)
     {
         return 0;
     }
+
+    if (op1->OperIsList())
+    {
+        numArgs              = 0;
+        GenTreeArgList* list = op1->AsArgList();
+
+        while (list != nullptr)
+        {
+            numArgs++;
+            list = list->Rest();
+        }
+
+        // We should only use a list if we have 3 operands.
+        assert(numArgs >= 3);
+        return numArgs;
+    }
+
+    if (op2 == nullptr)
+    {
+        return 1;
+    }
+
+    return 2;
 }
 
 //------------------------------------------------------------------------
@@ -553,7 +547,6 @@ bool Compiler::isFullyImplmentedISAClass(InstructionSet isa)
         case InstructionSet_AES:
         case InstructionSet_BMI1:
         case InstructionSet_BMI2:
-        case InstructionSet_FMA:
         case InstructionSet_PCLMULQDQ:
             return false;
 
@@ -569,6 +562,7 @@ bool Compiler::isFullyImplmentedISAClass(InstructionSet isa)
         case InstructionSet_SSE3:
         case InstructionSet_SSSE3:
         case InstructionSet_SSE41:
+        case InstructionSet_FMA:
         case InstructionSet_LZCNT:
         case InstructionSet_POPCNT:
             return true;
@@ -984,7 +978,6 @@ GenTree* Compiler::impSSE2Intrinsic(NamedIntrinsic        intrinsic,
     assert((simdSize == 16) || (simdSize == 0));
 
     CORINFO_ARG_LIST_HANDLE argList = sig->args;
-    CORINFO_CLASS_HANDLE    argClass;
     var_types               argType = TYP_UNKNOWN;
 
     switch (intrinsic)

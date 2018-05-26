@@ -5,7 +5,7 @@
 /*XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 XX                                                                           XX
-XX                           Lowering for AMD64                              XX
+XX                           Lowering for AMD64, x86                         XX
 XX                                                                           XX
 XX  This encapsulates all the logic for lowering trees for the AMD64         XX
 XX  architecture.  For a more detailed view of what is lowering, please      XX
@@ -21,9 +21,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #pragma hdrstop
 #endif
 
-#ifndef LEGACY_BACKEND // This file is ONLY used for the RyuJIT backend that uses the linear scan register allocator
-
-#ifdef _TARGET_XARCH_
+#ifdef _TARGET_XARCH_ // This file is only used for xarch
 
 #include "jit.h"
 #include "sideeffects.h"
@@ -2412,6 +2410,51 @@ void Lowering::ContainCheckHWIntrinsic(GenTreeHWIntrinsic* node)
                 break;
         }
     }
+    else if ((intrinsicID >= NI_FMA_MultiplyAdd) && (intrinsicID <= NI_FMA_MultiplySubtractNegatedScalar))
+    {
+        assert(numArgs == 3);
+        assert(op1->OperIsList());
+
+        GenTreeArgList* argList = op1->AsArgList();
+        op1                     = argList->Current();
+
+        argList      = argList->Rest();
+        GenTree* op2 = argList->Current();
+
+        argList      = argList->Rest();
+        GenTree* op3 = argList->Current();
+
+        if (IsContainableHWIntrinsicOp(node, op3))
+        {
+            // 213 form: op1 = (op2 * op1) + [op3]
+            MakeSrcContained(node, op3);
+        }
+        else if (IsContainableHWIntrinsicOp(node, op2))
+        {
+            // 132 form: op1 = (op1 * op3) + [op2]
+            MakeSrcContained(node, op2);
+        }
+        else if (IsContainableHWIntrinsicOp(node, op1))
+        {
+            // Intrinsics with CopyUpperBits semantics cannot have op1 be contained
+
+            if ((flags & HW_Flag_CopyUpperBits) == 0)
+            {
+                // 231 form: op3 = (op2 * op3) + [op1]
+                MakeSrcContained(node, op1);
+            }
+        }
+        else
+        {
+            // TODO-XArch-CQ: Technically any one of the three operands can
+            //                be reg-optional. With a limitation on op1 where
+            //                it can only be so if CopyUpperBits is off.
+            //                https://github.com/dotnet/coreclr/issues/6361
+
+            // 213 form: op1 = (op2 * op1) + op3
+            op3->SetRegOptional();
+        }
+    }
 
     if (Compiler::categoryOfHWIntrinsic(intrinsicID) == HW_Category_IMM)
     {
@@ -2474,5 +2517,3 @@ void Lowering::ContainCheckFloatBinary(GenTreeOp* node)
 }
 
 #endif // _TARGET_XARCH_
-
-#endif // !LEGACY_BACKEND
